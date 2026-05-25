@@ -5,6 +5,7 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode,
 } from 'react';
 import { useSystem } from '@/domain/SystemContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { readJSON, writeJSON, key } from '@/store/storage';
 import type { RollResult } from '@/systems/types';
 
@@ -34,6 +35,7 @@ export function useDice() {
 
 export function DiceProvider({ children }: { children: ReactNode }) {
   const { system, label: sysLabel } = useSystem();
+  const { lang } = useI18n();
   const [open, setOpen] = useState(false);
   const [pool, setPool] = useState(5);
   const [difficulty, setDifficulty] = useState(system.dice.defaultDifficulty);
@@ -105,7 +107,7 @@ export function DiceProvider({ children }: { children: ReactNode }) {
 
               <label className="flex items-center gap-2 text-text-mute text-xs cursor-pointer select-none">
                 <input type="checkbox" checked={specialty} onChange={(e) => setSpecialty(e.target.checked)} className="w-3.5 h-3.5 accent-blood" />
-                {sysLabel('specialty')} — 10 = 2 {sysLabel('successes').toLowerCase()}
+                {sysLabel('specialty')} — +1 {lang === 'ru' ? 'кубик' : 'die'}
               </label>
 
               <button onClick={doRoll} className="bg-blood text-white border border-blood2 py-3.5 text-sm tracking-[0.08em] uppercase rounded font-semibold hover:bg-blood2 transition-colors">
