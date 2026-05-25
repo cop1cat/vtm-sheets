@@ -1,22 +1,20 @@
 // V20 dice engine.
-// d10 pool; counts ≥ difficulty as successes; 1s subtract; with specialty a 10
-// counts double; a net ≤ 0 with at least one 1 and no successes is a botch.
+// d10 pool; counts ≥ difficulty as successes; 1s subtract; a specialty adds one
+// extra die to the pool; a net ≤ 0 with at least one 1 and no successes is a botch.
 import type { RollOptions, RollResult } from '@/systems/types';
 
 export const DEFAULT_DIFFICULTY = 6;
 
 export function rollPool({ pool, difficulty, specialty = false }: RollOptions): RollResult {
+  const count = pool + (specialty ? 1 : 0);
   const dice: number[] = [];
-  for (let i = 0; i < pool; i++) dice.push(Math.floor(Math.random() * 10) + 1);
+  for (let i = 0; i < count; i++) dice.push(Math.floor(Math.random() * 10) + 1);
 
   let successes = 0;
   let ones = 0;
   for (const d of dice) {
     if (d === 1) ones += 1;
-    else if (d >= difficulty) {
-      successes += 1;
-      if (d === 10 && specialty) successes += 1;
-    }
+    else if (d >= difficulty) successes += 1;
   }
 
   const net = successes - ones;
