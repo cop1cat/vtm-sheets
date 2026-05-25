@@ -1,6 +1,6 @@
 // Creation wizard — fullscreen overlay. Steps come from system.wizardSteps and
 // are rendered by kind; budgets/validators come from system.creation + rules.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Character, TraitItem } from '@/domain/character';
 import type { GameSystem, Lang, WizardStepKind } from '@/systems/types';
 import type { LocalizedText } from '@/i18n/lang';
@@ -48,16 +48,34 @@ export function Wizard({ ch, setPath, onClose, onExit }: {
     onClose();
   }
 
-  // Lock background scroll so the sheet underneath can't show through when the
-  // mobile keyboard raises this fixed overlay.
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Lock background scroll and pin the overlay to the visual viewport. On iOS
+  // Safari the software keyboard doesn't shrink dvh/layout units and raises
+  // fixed elements (revealing the sheet behind), so we size/offset the overlay
+  // to window.visualViewport, which DOES track the keyboard.
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    const vv = window.visualViewport;
+    const el = rootRef.current;
+    const apply = () => {
+      if (!vv || !el) return;
+      el.style.height = `${vv.height}px`;
+      el.style.transform = `translateY(${vv.offsetTop}px)`;
+    };
+    apply();
+    vv?.addEventListener('resize', apply);
+    vv?.addEventListener('scroll', apply);
+    return () => {
+      document.body.style.overflow = prev;
+      vv?.removeEventListener('resize', apply);
+      vv?.removeEventListener('scroll', apply);
+    };
   }, []);
 
   return (
-    <div className="fixed inset-x-0 top-0 h-[100dvh] z-[200] bg-ink flex flex-col text-text overflow-hidden">
+    <div ref={rootRef} className="fixed inset-x-0 top-0 h-[100dvh] z-[200] bg-ink flex flex-col text-text overflow-hidden">
       <header className="px-8 py-3.5 border-b border-line flex items-center gap-5 bg-surf">
         <button
           onClick={onExit}
