@@ -8,13 +8,11 @@ import { useAuth } from '@/cloud/AuthContext';
 import { shareLink } from '@/routing';
 import { getSystem, hasSystem } from '@/systems';
 
-export function SheetActions({ ch, onImport, onNewCharacter, onBack, live, onSetLive }: {
+export function SheetActions({ ch, onImport, onNewCharacter, onBack }: {
   ch: Character;
   onImport: (ch: Character) => void;
   onNewCharacter: () => void;
   onBack: () => void;
-  live?: boolean;
-  onSetLive?: (on: boolean) => void;
 }) {
   const { t, lang } = useI18n();
   const { system } = useSystem();
@@ -26,7 +24,6 @@ export function SheetActions({ ch, onImport, onNewCharacter, onBack, live, onSet
 
   async function share() {
     if (!user) return;
-    onSetLive?.(true); // sharing turns on live broadcast (~5s pushes)
     const link = shareLink(user.uid, ch.id);
     try {
       await navigator.clipboard.writeText(link);
@@ -123,11 +120,6 @@ export function SheetActions({ ch, onImport, onNewCharacter, onBack, live, onSet
               <button className={item} onClick={share}>
                 {shared ? (lang === 'ru' ? '✓ Ссылка скопирована' : '✓ Link copied') : (lang === 'ru' ? 'Поделиться с мастером' : 'Share with storyteller')}
               </button>
-              {live && (
-                <button className={item} onClick={() => { onSetLive?.(false); setOpen(false); }}>
-                  {lang === 'ru' ? 'Остановить трансляцию' : 'Stop broadcasting'}
-                </button>
-              )}
             </>
           )}
           <div className="h-px bg-line mx-2 my-1" />

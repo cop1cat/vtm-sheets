@@ -61,15 +61,6 @@ export function saveCharacter(ch: Character): void {
   putCharacter({ ...ch, updatedAt: Date.now() });
 }
 
-/** Per-character "live share with storyteller" flag (device-local). */
-export function isLiveShare(id: string): boolean {
-  return readJSON<boolean>(key('live', id), false);
-}
-export function setLiveShare(id: string, on: boolean): void {
-  if (on) writeJSON(key('live', id), true);
-  else remove(key('live', id));
-}
-
 export function createCharacter(systemId = DEFAULT_SYSTEM_ID): Character {
   const ch = hydrate({ ...getSystem(systemId).defaultCharacter(), id: uuid(), systemId });
   saveCharacter(ch);

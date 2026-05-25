@@ -1,6 +1,6 @@
 // Creation wizard — fullscreen overlay. Steps come from system.wizardSteps and
 // are rendered by kind; budgets/validators come from system.creation + rules.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Character, TraitItem } from '@/domain/character';
 import type { GameSystem, Lang, WizardStepKind } from '@/systems/types';
 import type { LocalizedText } from '@/i18n/lang';
@@ -48,8 +48,16 @@ export function Wizard({ ch, setPath, onClose, onExit }: {
     onClose();
   }
 
+  // Lock background scroll so the sheet underneath can't show through when the
+  // mobile keyboard raises this fixed overlay.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-[200] bg-ink flex flex-col text-text">
+    <div className="fixed inset-x-0 top-0 h-[100dvh] z-[200] bg-ink flex flex-col text-text overflow-hidden">
       <header className="px-8 py-3.5 border-b border-line flex items-center gap-5 bg-surf">
         <button
           onClick={onExit}
@@ -104,14 +112,14 @@ export function Wizard({ ch, setPath, onClose, onExit }: {
         </div>
       </main>
 
-      <footer className="px-8 py-4 border-t border-line flex items-center gap-3.5 bg-surf">
+      <footer className="px-4 sm:px-8 py-3 sm:py-4 border-t border-line flex items-center gap-2 sm:gap-3.5 bg-surf">
         <NavBtn onClick={() => goto(step - 1)} disabled={step === 0}>← {lang === 'ru' ? 'Назад' : 'Back'}</NavBtn>
-        <button onClick={finish} className="bg-transparent border-0 text-text-dim px-4 py-2.5 text-[13px] hover:text-text-mute transition-colors">
+        <button onClick={finish} className="hidden sm:inline-block whitespace-nowrap bg-transparent border-0 text-text-dim px-3 py-2.5 text-[13px] hover:text-text-mute transition-colors">
           {lang === 'ru' ? 'Сразу к листу' : 'Skip to sheet'}
         </button>
-        <div className="flex-1" />
+        <div className="flex-1 min-w-0" />
         {valid.message && (
-          <div className={`font-mono text-[11px] ${valid.tone === 'ok' ? 'text-good' : valid.tone === 'over' ? 'text-blood2' : 'text-gold'}`}>{valid.message}</div>
+          <div className={`font-mono text-[11px] whitespace-nowrap ${valid.tone === 'ok' ? 'text-good' : valid.tone === 'over' ? 'text-blood2' : 'text-gold'}`}>{valid.message}</div>
         )}
         {isLast ? (
           <PrimaryBtn onClick={finish}>{lang === 'ru' ? 'Готово' : 'Done'} ✓</PrimaryBtn>
@@ -157,7 +165,7 @@ function StepBody({ kind, ch, setPath, system, label, name, lang }: StepProps) {
           <Field label={label('clan')} value={ch.profile.clan} onChange={(v) => setPath('profile.clan', v)} options={system.clans.map((c) => ({ value: c.id, label: name(c.name) }))} />
           <Field label={label('generation')} type="number" value={ch.profile.generation} onChange={(v) => setPath('profile.generation', Number(v))} />
           <InfoBox className="col-span-2" label={lang === 'ru' ? 'запас крови' : 'blood pool'}>
-            {bpMax} <span className="text-text-mute text-sm font-mono">· {bpPerTurn}/turn</span>
+            {bpMax} <span className="text-text-mute text-sm font-mono">· {bpPerTurn}/{lang === 'ru' ? 'ход' : 'turn'}</span>
           </InfoBox>
           <Field label={label('sire')} value={ch.profile.sire} onChange={(v) => setPath('profile.sire', v)} />
           <Field label={label('weakness')} value={ch.weakness} onChange={(v) => setPath('weakness', v)} />
@@ -332,7 +340,7 @@ function validateStep(kind: WizardStepKind, ch: Character, system: GameSystem, l
 
 function NavBtn({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} className={`bg-transparent border border-line2 text-text px-[18px] py-2.5 rounded text-[13px] hover:border-text-mute transition-colors ${disabled ? 'opacity-35 cursor-not-allowed' : ''}`}>
+    <button onClick={onClick} disabled={disabled} className={`whitespace-nowrap bg-transparent border border-line2 text-text px-3 sm:px-[18px] py-2.5 rounded text-[13px] hover:border-text-mute transition-colors ${disabled ? 'opacity-35 cursor-not-allowed' : ''}`}>
       {children}
     </button>
   );
@@ -340,7 +348,7 @@ function NavBtn({ children, onClick, disabled }: { children: React.ReactNode; on
 
 function PrimaryBtn({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="bg-blood border border-blood text-white px-[18px] py-2.5 rounded text-[13px] hover:bg-blood2 hover:border-blood2 transition-colors">
+    <button onClick={onClick} className="whitespace-nowrap bg-blood border border-blood text-white px-3 sm:px-[18px] py-2.5 rounded text-[13px] hover:bg-blood2 hover:border-blood2 transition-colors">
       {children}
     </button>
   );

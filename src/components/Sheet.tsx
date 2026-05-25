@@ -11,7 +11,7 @@ import { HealthTrack, PoolTrack, AdaptivePool } from './tracks';
 import { SheetActions } from './SheetActions';
 import { disciplinePreset } from '@/domain/disciplines';
 
-export function Sheet({ ch, setPath, setCh, saveState, onNewCharacter, onBack, readOnly, readOnlyBanner, live, onSetLive }: {
+export function Sheet({ ch, setPath, setCh, saveState, onNewCharacter, onBack, readOnly, readOnlyBanner }: {
   ch: Character;
   setPath: (path: string, value: unknown) => void;
   setCh: (next: Character) => void;
@@ -20,8 +20,6 @@ export function Sheet({ ch, setPath, setCh, saveState, onNewCharacter, onBack, r
   onBack: () => void;
   readOnly?: boolean;
   readOnlyBanner?: ReactNode;
-  live?: boolean;
-  onSetLive?: (on: boolean) => void;
 }) {
   const { system, label } = useSystem();
   const { t, lang, setLang, name } = useI18n();
@@ -41,11 +39,11 @@ export function Sheet({ ch, setPath, setCh, saveState, onNewCharacter, onBack, r
         </div>
       )}
 
-      <div className="print-sheet max-w-[1200px] mx-auto px-9 pt-8 pb-[60px] flex flex-col gap-[26px]">
+      <div className="print-sheet max-w-[1200px] mx-auto px-4 sm:px-9 pt-6 sm:pt-8 pb-[60px] flex flex-col gap-[26px]">
         {/* Title plate */}
         <header className="flex flex-col gap-3.5">
           <div className="h-0.5 bg-text" />
-          <div className="flex items-center justify-between gap-[22px]">
+          <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-3">
             <div className="flex items-center gap-3.5 min-w-0 pointer-events-auto">
               {!readOnly && (
                 <button
@@ -56,19 +54,15 @@ export function Sheet({ ch, setPath, setCh, saveState, onNewCharacter, onBack, r
                   {t('myCharacters')}
                 </button>
               )}
-              <div className="font-mono text-[10px] tracking-[0.3em] text-text-mute truncate">VAMPIRE · THE MASQUERADE · V20</div>
+              <div className="hidden lg:block font-mono text-[10px] tracking-[0.3em] text-text-mute truncate">VAMPIRE · THE MASQUERADE · V20</div>
             </div>
             <div className="print-hidden flex items-center gap-2.5 pointer-events-auto">
-              {!readOnly && live && (
-                <span className="inline-flex items-center gap-1.5 font-mono text-[10px] tracking-[0.12em] uppercase text-gold" title={lang === 'ru' ? 'Мастер видит обновления (~5с)' : 'Storyteller sees updates (~5s)'}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-gold animate-save-pulse" />
-                  {lang === 'ru' ? 'трансляция' : 'live'}
-                </span>
-              )}
-              <SavePill state={saveState} labels={{ saving: label('saving'), saved: label('saved'), offline: label('offline') }} />
+              <span className="hidden sm:inline-flex">
+                <SavePill state={saveState} labels={{ saving: label('saving'), saved: label('saved'), offline: label('offline') }} />
+              </span>
               <LangToggle lang={lang} onChange={setLang} />
               {!readOnly && <ChecklistButton checklist={checklist} okCount={okCount} allOk={allOk} title={label('checklist')} />}
-              {!readOnly && <SheetActions ch={ch} onImport={setCh} onNewCharacter={onNewCharacter} onBack={onBack} live={!!live} onSetLive={onSetLive} />}
+              {!readOnly && <SheetActions ch={ch} onImport={setCh} onNewCharacter={onNewCharacter} onBack={onBack} />}
             </div>
           </div>
           <div className="flex items-end">
