@@ -9,8 +9,7 @@ import { DiceProvider } from '@/components/Dice';
 import { Sheet } from '@/components/Sheet';
 import { Wizard } from '@/components/Wizard';
 import {
-  setCurrentId, createCharacter, markOpenWizard, consumeOpenWizard,
-  loadCharacter, isLiveShare, setLiveShare,
+  setCurrentId, createCharacter, markOpenWizard, consumeOpenWizard, loadCharacter,
 } from '@/store/characters';
 import { useAuth } from '@/cloud/AuthContext';
 import { useCloudSync } from '@/cloud/useCloudSync';
@@ -20,7 +19,6 @@ export function SheetScreen({ charId }: { charId: string }) {
   const editor = useCharacter(charId);
   const { configured, user } = useAuth();
   const [wizard, setWizard] = useState(() => consumeOpenWizard(charId));
-  const [live, setLiveState] = useState(() => isLiveShare(charId));
 
   // One-shot: pull the latest from the cloud when opening (another device may
   // have a newer version). Read on open / reload only — no live subscription.
@@ -47,12 +45,7 @@ export function SheetScreen({ charId }: { charId: string }) {
   // Remember the last-opened character (effect, not render-phase).
   useEffect(() => { setCurrentId(charId); }, [charId]);
 
-  useCloudSync(user?.uid, editor.ch, live);
-
-  function setLive(on: boolean) {
-    setLiveShare(charId, on);
-    setLiveState(on);
-  }
+  useCloudSync(user?.uid, editor.ch);
 
   if (!editor.ch) {
     return (
@@ -80,8 +73,6 @@ export function SheetScreen({ charId }: { charId: string }) {
           saveState={editor.saveState}
           onNewCharacter={newCharacter}
           onBack={goDashboard}
-          live={live}
-          onSetLive={setLive}
         />
         {wizard && <Wizard ch={editor.ch} setPath={editor.setPath} onClose={() => setWizard(false)} onExit={goDashboard} />}
       </DiceProvider>

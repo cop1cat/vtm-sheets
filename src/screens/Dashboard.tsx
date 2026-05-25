@@ -89,9 +89,9 @@ export function Dashboard({ onCreate }: { onCreate: (id: string) => void }) {
 
   return (
     <div className="min-h-full">
-      <header className="flex items-center justify-between px-9 py-4 border-b border-line">
-        <span className="eyebrow">{t('appTitle')} · {t('myCharacters')}</span>
-        <div className="flex items-center gap-3">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 sm:px-9 py-3 sm:py-4 border-b border-line">
+        <span className="eyebrow truncate min-w-0"><span className="hidden sm:inline">{t('appTitle')} · </span>{t('myCharacters')}</span>
+        <div className="flex items-center gap-3 shrink-0">
           <AuthControl />
           <div className="inline-flex p-0.5 border border-line2 rounded font-mono text-[11px]">
             {AVAILABLE_LANGS.map((l) => (
@@ -242,7 +242,7 @@ function CardMenu({ onDelete, onDuplicate, deleteLabel, duplicateLabel }: {
   const guard = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
   return (
     <div className="relative shrink-0" ref={ref} data-card-menu onClick={stop} onMouseDown={stop}>
-      <button onClick={guard(() => setOpen(!open))} onMouseDown={stop} className="text-text-dim hover:text-text p-1" aria-label="menu">
+      <button onClick={guard(() => setOpen(!open))} onMouseDown={stop} className="text-text-mute hover:text-text p-1 -mr-1" aria-label="menu">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.4" /><circle cx="8" cy="8" r="1.4" /><circle cx="8" cy="13" r="1.4" /></svg>
       </button>
       {open && (
@@ -271,7 +271,7 @@ function AuthControl() {
       {user.photo
         ? <img src={user.photo} alt="" className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
         : <span className="w-6 h-6 rounded-full bg-surf2 border border-line2 flex items-center justify-center">{(user.name || user.email || '?').charAt(0).toUpperCase()}</span>}
-      <span className="text-text-mute max-w-[140px] truncate">{user.name || user.email}</span>
+      <span className="hidden sm:block text-text-mute max-w-[140px] truncate">{user.name || user.email}</span>
       <button
         onClick={signOut}
         className="border border-line2 text-text-mute rounded px-3 py-1.5 hover:text-text hover:border-text-mute transition-colors"

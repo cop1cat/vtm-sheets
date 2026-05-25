@@ -1,18 +1,17 @@
-// Write side of cloud sync (the read side is a one-shot load — see SheetScreen
-// for the owner and StorytellerView for the master; neither holds a live
-// subscription). Two write modes:
-//   - default: flush to Firestore when the player leaves the sheet (unmount) and
-//     on tab close. Most play is single-device, so a per-session write is enough.
-//   - live (player shared with a storyteller): also push at most once every ~5s
-//     while editing, so a master who reloads sees near-fresh data.
+// Write side of cloud sync (the read side is one-shot: SheetScreen for the
+// owner, StorytellerView for the master — no live subscriptions). When signed
+// in, pushes the open character to Firestore on a ~5s throttle while editing,
+// plus a flush when leaving the sheet / closing the tab. So the remote doc stays
+// near-current and a master who reloads sees fresh data — cheaply. No-op when
+// not configured or signed out.
 import { useEffect, useRef } from 'react';
 import type { Character } from '@/domain/character';
 import { isCloudConfigured } from './config';
 import { saveRemote } from './firebase';
 
-const LIVE_INTERVAL = 5000;
+const THROTTLE = 5000;
 
-export function useCloudSync(uid: string | null | undefined, ch: Character | null, live: boolean) {
+export function useCloudSync(uid: string | null | undefined, ch: Character | null) {
   const enabled = !!uid && isCloudConfigured();
   const chRef = useRef(ch);
   chRef.current = ch;
@@ -26,17 +25,17 @@ export function useCloudSync(uid: string | null | undefined, ch: Character | nul
     }
   };
 
-  // Live mode: throttled push (leading-capped) so the master's next reload is fresh.
+  // Throttled push on edits (at most once per THROTTLE).
   useEffect(() => {
-    if (!enabled || !live || !ch) return;
-    const wait = Math.max(0, LIVE_INTERVAL - (Date.now() - lastPush.current));
+    if (!enabled || !ch) return;
+    const wait = Math.max(0, THROTTLE - (Date.now() - lastPush.current));
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, wait);
     return () => clearTimeout(timer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, live, ch]);
+  }, [enabled, ch]);
 
-  // Flush once when leaving the sheet (unmount) and best-effort on tab close.
+  // Flush when leaving the sheet (unmount) and best-effort on tab close.
   useEffect(() => {
     if (!enabled) return;
     const onUnload = () => flush();
