@@ -1,0 +1,156 @@
+@import 'tailwindcss';
+
+/* Design tokens exposed to Tailwind as theme values — these generate utilities
+   like bg-bg, text-blood, border-line, font-display. The visual design is final. */
+@theme {
+  --color-ink: #0c0b10;
+  --color-bg: #14121a;
+  --color-surf: #1d1a24;
+  --color-line: #2a2630;
+  --color-line2: #3a343f;
+  --color-text: #eae6e0;
+  --color-text-mute: #8a8589;
+  --color-text-dim: #5e5a5f;
+  --color-blood: #a01e2e;
+  --color-blood2: #c9304a;
+  --color-gold: #c9a14a;
+  --color-good: #4a8a5c;
+
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-display: 'Cormorant Garamond', serif;
+
+  --default-transition-duration: 120ms;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Eyebrow: small mono uppercase label used for section headers. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-mute);
+}
+
+/* Health-box damage glyphs — Tailwind can't express ::before content. */
+.health-box::before {
+  content: '';
+}
+.health-box[data-state='bashing']::before {
+  content: '/';
+}
+.health-box[data-state='lethal']::before {
+  content: 'X';
+}
+.health-box[data-state='aggravated']::before {
+  content: '✱';
+}
+
+/* Save-pill pulse. */
+@keyframes save-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.animate-save-pulse {
+  animation: save-pulse 1s infinite;
+}
+
+/* Native select arrow on the dark theme. */
+.field-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path fill='%238a8589' d='M0 0h8L4 6z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  padding-right: 18px;
+}
+
+/* ---------- Print: paper-friendly character sheet ----------
+   The screen theme is dark; on paper we invert to light, keep the blood accent,
+   hide all chrome (.print-hidden / Tailwind print:hidden), and fit A4. Theme
+   tokens are CSS variables, so overriding them here cascades through every
+   Tailwind utility (bg-bg, text-text, border-line, …). */
+@media print {
+  :root {
+    --color-ink: #ffffff;
+    --color-bg: #ffffff;
+    --color-surf: #ffffff;
+    --color-surf2: #ffffff;
+    --color-line: #c4c0bb;
+    --color-line2: #9a948f;
+    --color-text: #111014;
+    --color-text-mute: #4a464b;
+    --color-text-dim: #7a767b;
+    --color-blood: #a01e2e;
+    --color-blood2: #a01e2e;
+    --color-gold: #7c6420;
+    --color-good: #2f6b3f;
+  }
+
+  /* Preserve filled dots, health boxes and blood/accent fills on paper. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  /* Belt-and-braces alongside Tailwind's print:hidden variant. */
+  .print-hidden {
+    display: none !important;
+  }
+
+  textarea {
+    resize: none;
+  }
+
+  /* Compact the sheet for A4. The multi-column layout is forced on via
+     print:grid-cols-* in the markup (the md: breakpoint doesn't trigger at
+     page width); here we just trim wasted vertical space. */
+  .print-sheet {
+    max-width: 100% !important;
+    padding: 0 !important;
+    gap: 9px !important;
+    line-height: 1.25;
+  }
+  /* Tighten the title plate's internal row spacing. */
+  .print-sheet > header {
+    gap: 7px !important;
+  }
+  /* Empty notes shouldn't eat a third of the page. */
+  .print-sheet textarea {
+    min-height: 32px !important;
+  }
+  /* Don't split a section across the page break. */
+  .print-sheet > section,
+  .print-sheet > header {
+    break-inside: avoid;
+  }
+
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+}
