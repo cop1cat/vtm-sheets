@@ -8,6 +8,7 @@ import { useEffect, useRef } from 'react';
 import type { Character } from '@/domain/character';
 import { isCloudConfigured } from './config';
 import { saveRemote } from './firebase';
+import { markSynced } from '@/store/characters';
 
 const THROTTLE = 5000;
 
@@ -21,7 +22,8 @@ export function useCloudSync(uid: string | null | undefined, ch: Character | nul
   const flush = () => {
     if (enabled && uid && chRef.current) {
       lastPush.current = Date.now();
-      saveRemote(uid, chRef.current).catch(() => {});
+      const id = chRef.current.id;
+      saveRemote(uid, chRef.current).then(() => markSynced(id)).catch(() => {});
     }
   };
 

@@ -5,7 +5,7 @@ import { AVAILABLE_LANGS } from '@/i18n/lang';
 import { useAuth } from '@/cloud/AuthContext';
 import { getSystem } from '@/systems';
 import {
-  listCharacters, loadCharacter, createCharacter, deleteCharacter, duplicateCharacter, markOpenWizard,
+  listCharacters, loadCharacter, createCharacter, deleteCharacter, duplicateCharacter, markOpenWizard, markSynced,
 } from '@/store/characters';
 import { readJSON, writeJSON, key } from '@/store/storage';
 import type { Character } from '@/domain/character';
@@ -49,19 +49,32 @@ export function Dashboard({ onCreate }: { onCreate: (id: string) => void }) {
     refresh();
   }
 
-  // On sign-in, pull the user's characters from Firestore so a fresh device
-  // shows them (one-shot read, merged by updatedAt).
+  // Reconcile the list with Firestore on sign-in and whenever the tab regains
+  // focus, so two devices converge (new characters appear, deleted ones go).
   useEffect(() => {
     if (!configured || !user) return;
-    import('@/cloud/listSync')
-      .then((m) => m.pullList(user.uid))
-      .then((n) => { if (n) refresh(); })
-      .catch(() => {});
+    const pull = () =>
+      import('@/cloud/listSync')
+        .then((m) => m.pullList(user.uid))
+        .then((changed) => { if (changed) refresh(); })
+        .catch(() => {});
+    pull();
+    const onFocus = () => { if (document.visibilityState === 'visible') pull(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
   }, [configured, user]);
 
   function handleNew() {
     const ch = createCharacter();
     markOpenWizard(ch.id); // new character → open the wizard once
+    if (user) {
+      // Push immediately so other devices discover it on their next pull.
+      import('@/cloud/firebase').then((m) => m.saveRemote(user.uid, ch)).then(() => markSynced(ch.id)).catch(() => {});
+    }
     onCreate(ch.id);
   }
 
@@ -134,7 +147,11 @@ export function Dashboard({ onCreate }: { onCreate: (id: string) => void }) {
                 onDelete={() => {
                   if (confirm(`${t('delete')}: ${ch.profile.name || '—'}?`)) removeCharacter(ch.id);
                 }}
-                onDuplicate={() => { duplicateCharacter(ch.id); refresh(); }}
+                onDuplicate={() => {
+                  const dup = duplicateCharacter(ch.id);
+                  if (dup && user) import('@/cloud/firebase').then((m) => m.saveRemote(user.uid, dup)).then(() => markSynced(dup.id)).catch(() => {});
+                  refresh();
+                }}
                 nameFor={name}
               />
             ))}
