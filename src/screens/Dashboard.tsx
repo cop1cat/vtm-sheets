@@ -1,5 +1,5 @@
 // Player dashboard — grid of character cards.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '@/i18n/I18nContext';
 import { AVAILABLE_LANGS } from '@/i18n/lang';
 import { useAuth } from '@/cloud/AuthContext';
@@ -7,19 +7,47 @@ import { getSystem } from '@/systems';
 import {
   listCharacters, loadCharacter, createCharacter, deleteCharacter, duplicateCharacter, markOpenWizard,
 } from '@/store/characters';
+import { readJSON, writeJSON, key } from '@/store/storage';
 import type { Character } from '@/domain/character';
 import { goSheet } from '@/routing';
+
+type SortBy = 'recent' | 'name' | 'chronicle';
+const SORT_KEY = key('dashboard', 'sort');
+
+function sortCharacters(list: Character[], by: SortBy): Character[] {
+  const byName = (a: Character, b: Character) => (a.profile.name || '').localeCompare(b.profile.name || '');
+  const copy = [...list];
+  if (by === 'name') return copy.sort(byName);
+  if (by === 'chronicle') {
+    return copy.sort((a, b) => (a.profile.chronicle || '').localeCompare(b.profile.chronicle || '') || byName(a, b));
+  }
+  return copy.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)); // recent
+}
 
 export function Dashboard({ onCreate }: { onCreate: (id: string) => void }) {
   const { t, lang, setLang, name } = useI18n();
   const { configured, ready, user, signIn } = useAuth();
   const [tick, setTick] = useState(0);
   const refresh = () => setTick((n) => n + 1);
+  const [sortBy, setSortBy] = useState<SortBy>(() => readJSON<SortBy>(SORT_KEY, 'recent'));
 
-  const characters = useMemo(
-    () => listCharacters().map((s) => loadCharacter(s.id)).filter((c): c is Character => !!c),
-    [tick],
-  );
+  function changeSort(by: SortBy) {
+    setSortBy(by);
+    writeJSON(SORT_KEY, by);
+  }
+
+  const characters = useMemo(() => {
+    const list = listCharacters().map((s) => loadCharacter(s.id)).filter((c): c is Character => !!c);
+    return sortCharacters(list, sortBy);
+  }, [tick, sortBy]);
+
+  function removeCharacter(id: string) {
+    deleteCharacter(id);
+    if (configured && user) {
+      import('@/cloud/firebase').then((m) => m.deleteRemote(user.uid, id)).catch(() => {});
+    }
+    refresh();
+  }
 
   // On sign-in, pull the user's characters from Firestore so a fresh device
   // shows them (one-shot read, merged by updatedAt).
@@ -84,17 +112,27 @@ export function Dashboard({ onCreate }: { onCreate: (id: string) => void }) {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <>
+            <div className="flex items-center justify-end gap-2 mb-5">
+              <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-text-dim">{t('sortBy')}</span>
+              <select
+                value={sortBy}
+                onChange={(e) => changeSort(e.target.value as SortBy)}
+                className="field-select bg-transparent border border-line2 rounded text-text text-xs px-2 py-1 outline-none cursor-pointer hover:border-text-mute"
+              >
+                <option value="recent" className="bg-surf">{t('sortRecent')}</option>
+                <option value="name" className="bg-surf">{t('sortName')}</option>
+                <option value="chronicle" className="bg-surf">{t('sortChronicle')}</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {characters.map((ch) => (
               <CharacterCard
                 key={ch.id}
                 ch={ch}
                 onOpen={() => goSheet(ch.id)}
                 onDelete={() => {
-                  if (confirm(`${t('delete')}: ${ch.profile.name || '—'}?`)) {
-                    deleteCharacter(ch.id);
-                    refresh();
-                  }
+                  if (confirm(`${t('delete')}: ${ch.profile.name || '—'}?`)) removeCharacter(ch.id);
                 }}
                 onDuplicate={() => { duplicateCharacter(ch.id); refresh(); }}
                 nameFor={name}
@@ -107,7 +145,8 @@ export function Dashboard({ onCreate }: { onCreate: (id: string) => void }) {
               <span className="text-3xl font-light">+</span>
               <span className="text-sm">{t('newCharacter')}</span>
             </button>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -131,13 +170,17 @@ function CharacterCard({ ch, onOpen, onDelete, onDuplicate, nameFor }: {
   const initial = (ch.profile.name || '?').trim().charAt(0).toUpperCase() || '?';
 
   return (
-    <div
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}
-      className="bg-bg border border-line rounded-lg p-5 flex flex-col gap-3.5 hover:border-text-mute hover:-translate-y-0.5 transition-all group cursor-pointer"
-    >
+    <div className="relative bg-bg border border-line rounded-lg p-5 hover:border-text-mute hover:-translate-y-0.5 transition-all group">
+      {/* Full-card click layer (navigates). Sits under the content; the content
+          is pointer-events-none so clicks fall through to here, except the menu
+          which re-enables pointer events on top. */}
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={ch.profile.name || 'character'}
+        className="absolute inset-0 z-0 rounded-lg cursor-pointer"
+      />
+      <div className="relative z-10 pointer-events-none flex flex-col gap-3.5">
       <div className="flex items-center gap-3.5">
         <div className="w-11 h-11 rounded-full bg-surf2 border border-line2 flex items-center justify-center font-display text-xl shrink-0">{initial}</div>
         <div className="min-w-0 flex-1">
@@ -150,7 +193,9 @@ function CharacterCard({ ch, onOpen, onDelete, onDuplicate, nameFor }: {
             <div className="font-mono text-[10px] tracking-[0.1em] text-gold/85 truncate mt-1">{ch.profile.chronicle}</div>
           )}
         </div>
-        <CardMenu onDelete={onDelete} onDuplicate={onDuplicate} deleteLabel={t('delete')} duplicateLabel={t('duplicate')} />
+        <div className="pointer-events-auto">
+          <CardMenu onDelete={onDelete} onDuplicate={onDuplicate} deleteLabel={t('delete')} duplicateLabel={t('duplicate')} />
+        </div>
       </div>
 
       {ch.profile.concept && <div className="text-text-mute text-[13px] italic leading-snug">{ch.profile.concept}</div>}
@@ -166,6 +211,7 @@ function CharacterCard({ ch, onOpen, onDelete, onDuplicate, nameFor }: {
         <span className={`ml-auto font-mono text-[10px] px-1.5 py-0.5 rounded-sm ${valid ? 'bg-good/15 text-good' : 'bg-blood/15 text-blood2'}`}>
           {valid ? t('valid') : t('invalid')}
         </span>
+      </div>
       </div>
     </div>
   );
@@ -184,16 +230,25 @@ function CardMenu({ onDelete, onDuplicate, deleteLabel, duplicateLabel }: {
   onDelete: () => void; onDuplicate: () => void; deleteLabel: string; duplicateLabel: string;
 }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
   const stop = (e: React.MouseEvent) => e.stopPropagation();
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+  // Stop both mousedown and click so neither reaches the card's onClick (open).
+  const guard = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
   return (
-    <div className="relative shrink-0" onClick={stop} onMouseLeave={() => setOpen(false)}>
-      <button onClick={() => setOpen(!open)} className="text-text-dim hover:text-text opacity-0 group-hover:opacity-100 transition-opacity p-1" aria-label="menu">
+    <div className="relative shrink-0" ref={ref} data-card-menu onClick={stop} onMouseDown={stop}>
+      <button onClick={guard(() => setOpen(!open))} onMouseDown={stop} className="text-text-dim hover:text-text p-1" aria-label="menu">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.4" /><circle cx="8" cy="8" r="1.4" /><circle cx="8" cy="13" r="1.4" /></svg>
       </button>
       {open && (
         <div className="absolute right-0 top-full bg-surf border border-line2 rounded-md p-1 min-w-[140px] z-10 shadow-[0_12px_32px_rgba(0,0,0,.4)]">
-          <button onClick={() => { onDuplicate(); setOpen(false); }} className="block w-full text-left px-3 py-2 text-[13px] rounded hover:bg-surf2 transition-colors">{duplicateLabel}</button>
-          <button onClick={() => { onDelete(); setOpen(false); }} className="block w-full text-left px-3 py-2 text-[13px] text-blood2 rounded hover:bg-surf2 transition-colors">{deleteLabel}</button>
+          <button onMouseDown={stop} onClick={guard(() => { onDuplicate(); setOpen(false); })} className="block w-full text-left px-3 py-2 text-[13px] rounded hover:bg-surf2 transition-colors">{duplicateLabel}</button>
+          <button onMouseDown={stop} onClick={guard(() => { onDelete(); setOpen(false); })} className="block w-full text-left px-3 py-2 text-[13px] text-blood2 rounded hover:bg-surf2 transition-colors">{deleteLabel}</button>
         </div>
       )}
     </div>

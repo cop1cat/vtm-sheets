@@ -83,6 +83,12 @@ export async function loadRemote(uid: string, charId: string): Promise<Character
   return snap.exists() ? (snap.data() as Character) : null;
 }
 
+export async function deleteRemote(uid: string, charId: string): Promise<void> {
+  const { db } = await services();
+  const { doc, deleteDoc } = await import('firebase/firestore');
+  await deleteDoc(doc(db, ...charPath(uid, charId)));
+}
+
 /** One-shot read of all of a user's characters (login → dashboard discovery). */
 export async function listRemote(uid: string): Promise<Character[]> {
   const { db } = await services();

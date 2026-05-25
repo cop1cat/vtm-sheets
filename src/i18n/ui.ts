@@ -18,6 +18,10 @@ export const UI: Partial<Record<Lang, Record<string, string>>> = {
     lastVisit: 'Был(а)',
     valid: 'Валиден',
     invalid: 'Не готов',
+    sortBy: 'Сортировка',
+    sortRecent: 'По последнему',
+    sortName: 'По имени',
+    sortChronicle: 'По хронике',
   },
   en: {
     appTitle: 'Character Sheet',
@@ -35,5 +39,9 @@ export const UI: Partial<Record<Lang, Record<string, string>>> = {
     lastVisit: 'Last visit',
     valid: 'Valid',
     invalid: 'Incomplete',
+    sortBy: 'Sort',
+    sortRecent: 'Last opened',
+    sortName: 'Name',
+    sortChronicle: 'Chronicle',
   },
 };
