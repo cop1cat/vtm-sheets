@@ -62,7 +62,7 @@ export function Wizard({ ch, setPath, onClose, onExit }: {
     const apply = () => {
       if (!vv || !el) return;
       el.style.height = `${vv.height}px`;
-      el.style.transform = `translateY(${vv.offsetTop}px)`;
+      el.style.top = `${vv.offsetTop}px`;
     };
     apply();
     vv?.addEventListener('resize', apply);

@@ -11,6 +11,21 @@ import { key, readJSON, writeJSON, remove, readString } from './storage';
 const INDEX_KEY = key('characters', 'index');
 const CURRENT_KEY = key('session', 'currentId');
 const LEGACY_KEY = key('character'); // prototype single-character doc
+const SYNCED_KEY = key('synced'); // ids known to exist in the cloud (for safe delete reconcile)
+
+// "Synced" set: ids we've confirmed in Firestore (pushed or pulled). Used so the
+// list reconcile can remove characters deleted on another device WITHOUT wiping
+// freshly-created local-only characters that simply haven't been pushed yet.
+export function isSynced(id: string): boolean {
+  return readJSON<string[]>(SYNCED_KEY, []).includes(id);
+}
+export function markSynced(id: string): void {
+  const s = readJSON<string[]>(SYNCED_KEY, []);
+  if (!s.includes(id)) writeJSON(SYNCED_KEY, [...s, id]);
+}
+export function unmarkSynced(id: string): void {
+  writeJSON(SYNCED_KEY, readJSON<string[]>(SYNCED_KEY, []).filter((x) => x !== id));
+}
 
 function uuid(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -71,6 +86,7 @@ export function createCharacter(systemId = DEFAULT_SYSTEM_ID): Character {
 export function deleteCharacter(id: string): void {
   remove(key('characters', id));
   writeIndex(listCharacters().filter((c) => c.id !== id));
+  unmarkSynced(id);
   if (getCurrentId() === id) remove(CURRENT_KEY);
 }
 

@@ -9,7 +9,7 @@ import { DiceProvider } from '@/components/Dice';
 import { Sheet } from '@/components/Sheet';
 import { Wizard } from '@/components/Wizard';
 import {
-  setCurrentId, createCharacter, markOpenWizard, consumeOpenWizard, loadCharacter,
+  setCurrentId, createCharacter, markOpenWizard, consumeOpenWizard, loadCharacter, markSynced,
 } from '@/store/characters';
 import { useAuth } from '@/cloud/AuthContext';
 import { useCloudSync } from '@/cloud/useCloudSync';
@@ -60,22 +60,30 @@ export function SheetScreen({ charId }: { charId: string }) {
     if (configured && !user) return goDashboard(); // creation requires sign-in
     const ch = createCharacter();
     markOpenWizard(ch.id);
+    if (user) import('@/cloud/firebase').then((m) => m.saveRemote(user.uid, ch)).then(() => markSynced(ch.id)).catch(() => {});
     goSheet(ch.id);
   }
 
+  // Render the wizard INSTEAD of the sheet (not as an overlay on top). On iOS
+  // Safari `position: fixed` degrades to `static` when the keyboard opens, so an
+  // overlay scrolls and reveals the sheet behind it. With the sheet unmounted
+  // there's nothing to bleed through.
   return (
     <SystemProvider systemId={editor.ch.systemId}>
-      <DiceProvider>
-        <Sheet
-          ch={editor.ch}
-          setPath={editor.setPath}
-          setCh={editor.setCh}
-          saveState={editor.saveState}
-          onNewCharacter={newCharacter}
-          onBack={goDashboard}
-        />
-        {wizard && <Wizard ch={editor.ch} setPath={editor.setPath} onClose={() => setWizard(false)} onExit={goDashboard} />}
-      </DiceProvider>
+      {wizard ? (
+        <Wizard ch={editor.ch} setPath={editor.setPath} onClose={() => setWizard(false)} onExit={goDashboard} />
+      ) : (
+        <DiceProvider>
+          <Sheet
+            ch={editor.ch}
+            setPath={editor.setPath}
+            setCh={editor.setCh}
+            saveState={editor.saveState}
+            onNewCharacter={newCharacter}
+            onBack={goDashboard}
+          />
+        </DiceProvider>
+      )}
     </SystemProvider>
   );
 }
